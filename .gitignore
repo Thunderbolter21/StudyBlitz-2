@@ -1,9 +1,15 @@
 # Dependencies
 node_modules/
 
-# Environment
-.env
-.env.*
-
 # Build output
 dist/
+
+# Environment & secrets — NEVER commit credentials
+.env
+.env.*
+!.env.example
+Login Stuff.txt
+
+# Tooling
+.netlify/
+*.local
