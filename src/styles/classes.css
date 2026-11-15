@@ -1,0 +1,39 @@
+/* classes.css — classes page glass tiles, drill options, weak spots */
+
+/* ── CLASSES page — responsive grid of lightweight glass class tiles ── */
+.classes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem;}
+.class-tile{position:relative;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(120%);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(120%);border:1px solid var(--glass-bd);border-radius:var(--radius-lg);box-shadow:var(--glass-sheen),var(--glass-shadow);overflow:hidden;transition:border-color var(--dur-2) var(--ease-out),transform var(--dur-2) var(--ease-out),box-shadow var(--dur-2);}
+.class-tile::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--cls,var(--accent));}
+.class-tile:hover{border-color:var(--glass-bd-hover);transform:translateY(-2px);box-shadow:var(--glass-sheen),0 14px 40px rgba(0,0,0,0.5);}
+
+.class-tile-menu{position:absolute;top:0.7rem;right:0.6rem;z-index:2;background:transparent;border:none;color:var(--muted);font-size:1.1rem;line-height:1;cursor:pointer;padding:0.2rem 0.45rem;border-radius:8px;transition:color var(--dur-1),background var(--dur-1);}
+.class-tile-menu:hover{color:var(--text);background:rgba(255,255,255,0.06);}
+
+.class-tile-hdr{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:0.15rem;width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:1.1rem 2.4rem 1rem 1.2rem;font-family:'Sora',sans-serif;color:var(--text);}
+.class-tile-name{font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:0.04em;line-height:1.1;}
+.class-tile-meta{font-size:0.75rem;color:var(--muted);}
+.class-tile-chevron{position:absolute;right:1rem;bottom:0.85rem;font-size:0.68rem;color:var(--muted);transition:transform var(--dur-2) var(--ease-out);}
+.class-tile.open .class-tile-chevron{transform:rotate(180deg);}
+
+/* Slide/fade reveal via grid-template-rows 0fr↔1fr (no JS height measuring). */
+.class-tile-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-2) var(--ease-out);}
+.class-tile.open .class-tile-body{grid-template-rows:1fr;}
+.class-tile-inner{overflow:hidden;min-height:0;padding:0 1.2rem 1.1rem;}
+.class-tile-decks{display:flex;flex-direction:column;gap:0.7rem;}
+.class-tile-empty{font-size:0.82rem;color:var(--muted);text-align:center;padding:0.4rem 0 0.1rem;}
+.class-tile-drill{width:100%;justify-content:center;margin-top:0.8rem;border-style:dashed;color:var(--accent);border-color:var(--accent);}
+.class-tile-drill .dim{margin-left:0.4rem;color:var(--muted);font-size:0.75rem;}
+
+.no-classes{text-align:center;padding:3rem 2rem;color:var(--muted);}
+.no-classes .nc-icon{font-size:3rem;margin-bottom:1rem;}
+
+/* ── Shared: chevron used by Weak Spots rows; class-sub-item used by the
+   assign-class modal (Modals.js) and dashboard class picker (Dashboard.js) ── */
+.class-chevron{font-size:0.72rem;color:var(--muted);transition:transform 0.2s;}
+.class-sub-item{display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0.8rem;border-radius:8px;cursor:pointer;font-size:0.83rem;color:var(--muted);transition:all 0.15s;border:none;background:transparent;width:100%;text-align:left;font-family:'Sora',sans-serif;}
+.class-sub-item:hover{color:var(--text);background:rgba(255,255,255,0.04);}
+.class-sub-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* ── WEAK SPOTS page ── */
+.weak-q-row{display:flex;align-items:flex-start;gap:0.8rem;padding:0.75rem 1.2rem;border-bottom:1px solid var(--border);}
+.weak-q-row:last-child{border-bottom:none;}
