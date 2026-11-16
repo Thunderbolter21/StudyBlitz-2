@@ -14,17 +14,24 @@ Read it to port behavior faithfully; never copy its architecture
 
 ## Current state
 
-- **Phase 0 (foundation) — in progress/complete.** See "Phase plan" below.
-- Supabase project + Netlify site: created by Matt (see README / phase
-  reports for the exact setup steps).
+- **Phase 1 (data layer + auth + sync) — complete; awaiting Matt's review.**
+- Supabase project is live, 0001_init.sql has been run, and the integration
+  suite passes against it (`npm run test:integration`) — schema, triggers,
+  and RLS verified for real. The throwaway test account is a confirmed
+  dashboard user; its creds live in .env (VITE_SB2_TEST_EMAIL/PASSWORD).
+- Netlify site: not yet created.
+- Email confirmation is ON in the Supabase project — sign-up flows must
+  handle the "check your email" path (AuthPage does).
 
 ## Commands
 
 ```bash
-npm run dev        # Vite dev server
-npm run build      # production build (watch gzip sizes — budget below)
-npm test           # Vitest, single run
+npm run dev               # Vite dev server
+npm run build             # production build (watch gzip sizes — budget below)
+npm test                  # Vitest unit suite (offline, fast, always safe)
 npm run test:watch
+npm run test:integration  # REAL-Supabase test; needs .env + the throwaway
+                          # test account (VITE_SB2_TEST_EMAIL/PASSWORD in .env)
 ```
 
 ## Locked decisions (do not relitigate)
@@ -86,9 +93,9 @@ supabase/migrations/   SQL to paste into the Supabase SQL editor
 3. Pull before push. Never overwrite a remote row without reconciling it.
 4. Conflicts resolve PER ROW by `updated_at` (latest edit wins, that row
    only). Different rows never conflict.
-5. Deletes are soft (`deleted_at` tombstones). Delete wins over concurrent
-   edits; restore is an explicit action. Stale devices can never resurrect
-   or wipe rows.
+5. Deletes are soft (`deleted_at` tombstones) and TERMINAL: a tombstone
+   beats any concurrent edit, even a newer one, and there is no restore.
+   Stale devices can never resurrect or wipe rows.
 6. Never-clobber: a fresh/empty device must fully pull (hydrate) before it
    may push. Structurally there is NO code path that writes a whole
    collection — only per-row upserts.
@@ -128,10 +135,28 @@ server_updated_at > cursor`). See `supabase/migrations/0001_init.sql`.
 - Each phase ends: tests green → build clean → phase report → update this
   file → commit → STOP for Matt's review.
 
+## Data-layer conventions (Phase 1)
+
+- One IndexedDB database per user: `sb2-<userId>` — accounts never mix.
+- Local rows are camelCase (v1 data-shape parity, e.g. `everWrong`,
+  `interval`); remote columns are snake_case. The ONLY mapping point is
+  `toRemote`/`toLocal` in `src/data/schema.js` (note `interval` ↔
+  `interval_days`).
+- `card_memory` row id IS the question id (1 record per user per question,
+  so two devices merge instead of colliding on the unique constraint).
+- `high_scores` row id is derived from deckId+seconds (same reason) —
+  see `deriveScoreId` in repositories.js.
+- `user_settings` pk is `userId`, not `id`.
+- Supabase URL from env is normalized to its origin in config.js — users
+  paste `/rest/v1` suffixes and trailing slashes; never read raw env.
+- Tests: `src/data/testing/` holds the mock server + device harness. A
+  "device" = fresh fake IndexedDB + REAL sync/repo code.
+
 ## Phase plan
 
 0. ✅ Foundation: scaffold, tokens skeleton, migration SQL, env, Netlify.
-1. Data layer + Auth + Sync (highest risk; full Rule-8 test matrix).
+1. ✅ Data layer + Auth + Sync — unit matrix green + live integration test
+   passing against the real project.
 2. Design system + app shell (+ `#styleguide` page).
 3. Hierarchy UI: semesters/classes/decks CRUD, move, archive.
 4. Quiz Builder + presets + API key (+ DOCX/PPTX/URL inputs).

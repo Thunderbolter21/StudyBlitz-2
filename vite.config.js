@@ -1,6 +1,6 @@
 // vite.config.js — build + test configuration.
 // Imported from 'vitest/config' so the `test` block below configures Vitest too.
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 
 export default defineConfig({
   build: {
@@ -11,6 +11,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    // fake-indexeddb is registered per-test-file where needed (Phase 1).
+    // The real-Supabase test needs network + credentials; it runs only via
+    // `npm run test:integration` (see vitest.integration.config.js).
+    exclude: [...configDefaults.exclude, '**/*.integration.test.js'],
   },
 });
