@@ -179,6 +179,12 @@ export function createRepos({ db, sync, userId, now = () => Date.now() }) {
       const current = await this.get();
       return save('user_settings', 'userId', { ...current, ...partial, userId });
     },
+    // Merge INTO preferences instead of replacing the whole object, so
+    // e.g. saving currentSemesterId never wipes other preferences.
+    async patchPreferences(partial) {
+      const current = await this.get();
+      return this.save({ preferences: { ...(current.preferences || {}), ...partial } });
+    },
   };
 
   // ── High scores (time challenge bests) ───────────────────────────────────

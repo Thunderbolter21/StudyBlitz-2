@@ -50,6 +50,8 @@ export function createSync({
     typeof navigator === 'undefined' ? true : navigator.onLine !== false,
   heartbeatMs = 45_000,
   onChange = () => {},   // (status, { pending }) → UI
+  onApplied = () => {},  // fired when a pull/reconcile CHANGED local rows,
+                         // so pages can re-render remote edits
 }) {
   let status = 'synced';
   let heartbeat = null;
@@ -107,10 +109,12 @@ export function createSync({
     }
     try {
       const queuedKeys = new Set((await db.outboxAll()).map((e) => e.key));
+      let applied = 0;
       for (const table of TABLE_NAMES) {
-        await pullTable(table, queuedKeys);
+        applied += await pullTable(table, queuedKeys);
       }
       await setStatus((await db.outboxCount()) > 0 ? 'syncing' : 'synced');
+      if (applied > 0) onApplied();
     } catch (err) {
       console.warn('[sync] pull failed:', err?.message || err);
       await setStatus('error');
@@ -118,9 +122,12 @@ export function createSync({
     }
   }
 
+  // Returns how many rows were actually written locally.
   async function pullTable(table, queuedKeys) {
     const cursorKey = `cursor:${table}`;
     let cursor = (await db.metaGet(cursorKey)) || EPOCH;
+
+    let appliedCount = 0;
 
     // We use gte (not gt) so rows sharing the exact cursor timestamp are
     // never skipped; re-applying an already-seen row is harmless because
@@ -143,6 +150,11 @@ export function createSync({
         const queued = queuedKeys.has(outboxKey(table, id));
         const winner = mergeRows(local, remote, queued);
         if (winner === remote) {
+          // Only count rows whose content is actually new to this device
+          // (every pull re-reads rows at the cursor timestamp — see gte note).
+          if (!local || local.updatedAt !== remote.updatedAt || Boolean(local.deletedAt) !== Boolean(remote.deletedAt)) {
+            appliedCount++;
+          }
           await db.put(table, remote);
           // Remote beat a queued local edit → that edit lost the merge;
           // pushing it would be wrong, so drop it from the outbox.
@@ -156,6 +168,7 @@ export function createSync({
       if (maxSeen === cursor) break; // safety: cursor must advance
       cursor = maxSeen;
     }
+    return appliedCount;
   }
 
   // ── Flush (push the outbox; SYNC RULES 2 + 3) ─────────────────────────────

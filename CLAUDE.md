@@ -14,7 +14,11 @@ Read it to port behavior faithfully; never copy its architecture
 
 ## Current state
 
-- **Phase 2 (design system + app shell) — complete; awaiting Matt's review.**
+- **Phase 3 (hierarchy UI) — complete; awaiting Matt's review.**
+- E2E verification: `scripts/e2e-home.mjs` drives the real app in headless
+  Edge via CDP (sign-in with the test account → create semester/class/deck
+  through the UI → screenshots → delete everything). Run the dev server
+  first. `scripts/clean-test-account.mjs` wipes the test account's rows.
 - The component reference is the `#styleguide` page (viewable WITHOUT
   signing in). If a component isn't shown there, it doesn't exist yet.
   Token contrast is enforced by `src/styles/tokens.test.js`.
@@ -165,7 +169,10 @@ server_updated_at > cursor`). See `supabase/migrations/0001_init.sql`.
 2. ✅ Design system + app shell: tokens (AA-audited by test), paper/desk
    surfaces, @fontsource latin fonts, shell (header/tabs/outlet), hash
    router, toast/modal, SVG desk decorations, `#styleguide` page.
-3. Hierarchy UI: semesters/classes/decks CRUD, move, archive.
+3. ✅ Hierarchy UI: semester folder tabs + current-semester sheet, class
+   sections with color, deck index cards, full CRUD/move/archive flows,
+   empty states, hydration loading state (never show "welcome" while the
+   first pull is still running — it invites duplicate data).
 4. Quiz Builder + presets + API key (+ DOCX/PPTX/URL inputs).
 5. Quiz engine port (parity tests, feedback reskin with v1 timing).
 6. Polish & ship: backup, onboarding, a11y, perf, PWA, deploy checklist.

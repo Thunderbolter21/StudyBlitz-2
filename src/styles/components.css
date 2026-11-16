@@ -224,6 +224,113 @@ textarea { resize: vertical; line-height: 1.55; }
   border-radius: var(--radius-sm); cursor: pointer; padding: 0 var(--space-2);
 }
 
+/* ── Popover menu (⋯ actions) ────────────────────────────── */
+.menu-pop {
+  position: absolute;
+  z-index: 450;
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  padding: var(--space-1);
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+}
+.menu-item {
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--touch-min);
+  cursor: pointer;
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+.menu-item:hover { background: var(--paper-shade); }
+.menu-item.danger { color: var(--pen-red); }
+
+.icon-btn {
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+.icon-btn:hover { background: var(--paper-shade); color: var(--ink); }
+
+/* ── Color swatches (class color picker) ─────────────────── */
+.swatch-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.swatch {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--swatch);
+  border: 3px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.swatch.picked { border-color: var(--ink); }
+
+/* ── Home: semester header + class sections + deck grid ──── */
+.sem-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.sem-header h2 { margin: 0; }
+.archived-badge {
+  font-size: var(--text-xs);
+  color: var(--graphite);
+  border: 1px solid var(--graphite);
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+  vertical-align: middle;
+}
+
+.class-section { margin-bottom: var(--space-6); }
+.class-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 3px solid var(--cls-color, var(--graphite));
+  padding-bottom: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.class-section-header h3 { margin: 0; flex: 1; }
+.class-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--cls-color, var(--graphite));
+  flex-shrink: 0;
+}
+
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--space-3);
+}
+.deck-card { display: flex; flex-direction: column; gap: var(--space-2); }
+.deck-card .deck-title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  padding-right: var(--space-6); /* room for the ⋯ button */
+  overflow-wrap: anywhere;
+}
+.deck-card .deck-meta { font-size: var(--text-xs); color: var(--ink-soft); margin-top: auto; }
+.deck-card .icon-btn { position: absolute; top: var(--space-1); right: var(--space-1); }
+
+.class-empty {
+  color: var(--graphite);
+  font-size: var(--text-sm);
+  padding: var(--space-2) 0;
+}
+
 /* ── Styleguide page ─────────────────────────────────────── */
 .sg-section { margin-bottom: var(--space-8); }
 .sg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--space-3); }

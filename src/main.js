@@ -52,6 +52,8 @@ async function startApp(client, session, supaSession) {
     client,
     userId: user.id,
     onChange: (status, { pending }) => appStore.patch({ syncStatus: status, pending }),
+    // A pull brought changes from another device → re-render open pages.
+    onApplied: () => repos.events.patch({ dataVersion: repos.events.get().dataVersion + 1 }),
   });
 
   const repos = createRepos({ db, sync, userId: user.id });
@@ -77,8 +79,8 @@ async function startApp(client, session, supaSession) {
   const stopRouter = startRouter({
     outlet: shell.outlet,
     routes: {
-      '': (outlet) => renderHomePage(outlet, { repos, sync }),
-      'home': (outlet) => renderHomePage(outlet, { repos, sync }),
+      '': (outlet) => renderHomePage(outlet, { repos, sync, appStore }),
+      'home': (outlet) => renderHomePage(outlet, { repos, sync, appStore }),
       'styleguide': (outlet) => renderStyleGuidePage(outlet),
     },
     onNavigate: (route) => shell.setActive(route || 'home'),
