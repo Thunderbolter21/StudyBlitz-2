@@ -1,41 +1,25 @@
-// HomePage.js — Phase 1 placeholder home screen.
-// Shows the sync status chip and a TEMPORARY semesters debug panel so the
-// data layer can be exercised end-to-end by hand (two browsers side by
-// side = a real two-device test). Phase 2/3 replace this with the real UI.
+// HomePage.js — Phase 1/2 placeholder home content (renders into the shell).
+// Still carries the TEMPORARY semesters debug panel so the data layer can be
+// exercised by hand (two browsers side by side = a real two-device test).
+// Phase 3 replaces this with the real semester → class → deck home view.
 
-export function renderHomePage(container, { repos, appStore, session, sync }) {
-  let unsubStore = () => {};
-  let unsubData = () => {};
-
+export function renderHomePage(outlet, { repos, sync }) {
   async function render() {
-    const { syncStatus, pending, userEmail } = appStore.get();
     const semesters = await repos.semesters.list();
 
-    container.innerHTML = `
-      <main class="home-wrap">
-        <header class="home-header">
-          <h1>StudyBlitz</h1>
-          <div class="home-header-right">
-            <span class="sync-chip sync-${syncStatus}" title="Sync status">
-              ${chipLabel(syncStatus, pending)}
-            </span>
-            <button class="btn-ghost" id="sign-out">Sign out</button>
-          </div>
-        </header>
-
-        <p class="home-sub">Signed in as <strong>${userEmail}</strong></p>
-
+    outlet.innerHTML = `
+      <div class="paper-sheet">
         <!-- TEMPORARY Phase 1 debug panel — replaced by the real UI in Phase 3 -->
-        <section class="debug-panel">
+        <section>
           <h2>Semesters <span class="debug-tag">debug</span></h2>
           <form id="sem-form" class="debug-row">
-            <input id="sem-name" placeholder="e.g. Spring 2027" required />
+            <input id="sem-name" placeholder="e.g. Spring 2027" required aria-label="Semester name" />
             <button type="submit" class="btn-primary">Add</button>
           </form>
           <ul class="debug-list" id="sem-list">
             ${semesters.map((s) => `
               <li data-id="${s.id}">
-                <span class="sem-name">${escapeHtml(s.name)}${s.archivedAt ? ' <em>(archived)</em>' : ''}</span>
+                <span>${escapeHtml(s.name)}${s.archivedAt ? ' <em>(archived)</em>' : ''}</span>
                 <span class="debug-actions">
                   <button data-act="rename">Rename</button>
                   <button data-act="archive">${s.archivedAt ? 'Unarchive' : 'Archive'}</button>
@@ -45,19 +29,18 @@ export function renderHomePage(container, { repos, appStore, session, sync }) {
           </ul>
           <button class="btn-ghost" id="sync-now">Sync now</button>
         </section>
-      </main>`;
+      </div>`;
 
-    container.querySelector('#sign-out').onclick = () => session.signOut();
-    container.querySelector('#sync-now').onclick = () =>
+    outlet.querySelector('#sync-now').onclick = () =>
       sync.pullAll().then(() => sync.flush()).catch(() => {});
 
-    container.querySelector('#sem-form').onsubmit = async (e) => {
+    outlet.querySelector('#sem-form').onsubmit = async (e) => {
       e.preventDefault();
-      const name = container.querySelector('#sem-name').value.trim();
+      const name = outlet.querySelector('#sem-name').value.trim();
       if (name) await repos.semesters.create(name);
     };
 
-    container.querySelector('#sem-list').onclick = async (e) => {
+    outlet.querySelector('#sem-list').onclick = async (e) => {
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
       const id = btn.closest('li').dataset.id;
@@ -76,22 +59,9 @@ export function renderHomePage(container, { repos, appStore, session, sync }) {
     };
   }
 
-  function chipLabel(status, pending) {
-    if (status === 'offline') return `⛅ Offline${pending ? ` · ${pending} pending` : ''}`;
-    if (status === 'error') return `⚠ Sync error · ${pending ?? 0} pending`;
-    if (status === 'syncing' || pending > 0) return '⟳ Syncing…';
-    return '✓ Synced';
-  }
-
-  // Re-render when sync status changes or any data changes.
-  unsubStore = appStore.subscribe(() => void render());
-  unsubData = repos.events.subscribe(() => void render());
+  const unsub = repos.events.subscribe(() => void render());
   void render();
-
-  return () => {
-    unsubStore();
-    unsubData();
-  };
+  return unsub;
 }
 
 function escapeHtml(s) {

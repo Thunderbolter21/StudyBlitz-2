@@ -14,7 +14,10 @@ Read it to port behavior faithfully; never copy its architecture
 
 ## Current state
 
-- **Phase 1 (data layer + auth + sync) — complete; awaiting Matt's review.**
+- **Phase 2 (design system + app shell) — complete; awaiting Matt's review.**
+- The component reference is the `#styleguide` page (viewable WITHOUT
+  signing in). If a component isn't shown there, it doesn't exist yet.
+  Token contrast is enforced by `src/styles/tokens.test.js`.
 - Supabase project is live, 0001_init.sql has been run, and the integration
   suite passes against it (`npm run test:integration`) — schema, triggers,
   and RLS verified for real. The throwaway test account is a confirmed
@@ -77,7 +80,9 @@ supabase/migrations/   SQL to paste into the Supabase SQL editor
   mirrors to Supabase. One pub/sub store for state.
 - Hash routing with deep links, including `#review?deck=ID`.
 - All styling through `src/styles/tokens.css` custom properties —
-  no one-off hex values in components.
+  no one-off hex values in components. CSS layers: tokens → global →
+  surfaces (paper/cards/tabs/decor) → components (buttons/forms/chrome).
+  Text ALWAYS sits on paper surfaces, never directly on the desk.
 - Decoration (SVG pencils/erasers, paper texture) lives AROUND study
   surfaces, never inside quiz screens. No WebGL, no video, no big rasters.
 - Performance budget: initial JS < 150 kB gzipped. Heavy parsers
@@ -157,7 +162,9 @@ server_updated_at > cursor`). See `supabase/migrations/0001_init.sql`.
 0. ✅ Foundation: scaffold, tokens skeleton, migration SQL, env, Netlify.
 1. ✅ Data layer + Auth + Sync — unit matrix green + live integration test
    passing against the real project.
-2. Design system + app shell (+ `#styleguide` page).
+2. ✅ Design system + app shell: tokens (AA-audited by test), paper/desk
+   surfaces, @fontsource latin fonts, shell (header/tabs/outlet), hash
+   router, toast/modal, SVG desk decorations, `#styleguide` page.
 3. Hierarchy UI: semesters/classes/decks CRUD, move, archive.
 4. Quiz Builder + presets + API key (+ DOCX/PPTX/URL inputs).
 5. Quiz engine port (parity tests, feedback reskin with v1 timing).

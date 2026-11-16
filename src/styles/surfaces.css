@@ -1,0 +1,152 @@
+/* surfaces.css — paper sheets, ruled lines, index cards, folder tabs,
+   sticky notes, and where desk decorations sit. All CSS + tiny inline
+   SVG grain — no raster images (performance budget). */
+
+/* ── The basic sheet of paper ───────────────────────────── */
+.paper-sheet {
+  position: relative;
+  background: var(--paper);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+}
+
+/* Subtle paper grain: an inline-SVG turbulence texture at 4% opacity. */
+.paper-sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Ruled notebook paper: blue lines + the red margin line. Content inside
+   should use .ruled-content so text clears the margin. */
+.paper-sheet.ruled {
+  background:
+    linear-gradient(var(--margin-red), var(--margin-red)) 44px 0 / 1.5px 100% no-repeat,
+    repeating-linear-gradient(
+      transparent 0 calc(1.55rem - 1px),
+      var(--rule-line) calc(1.55rem - 1px) 1.55rem
+    ) 0 var(--space-6) / 100% calc(100% - var(--space-6)) no-repeat,
+    var(--paper);
+}
+.ruled-content { margin-left: 56px; }
+
+@media (max-width: 480px) {
+  .paper-sheet { padding: var(--space-4); }
+  .paper-sheet.ruled { background-position: 28px 0, 0 var(--space-4); }
+  .ruled-content { margin-left: 36px; }
+}
+
+/* ── Index card (decks live on these) ───────────────────── */
+.index-card {
+  position: relative;
+  background: var(--paper);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  /* Class color spine down the left edge, like a labeled card divider. */
+  border-left: 5px solid var(--card-color, var(--graphite));
+  transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2);
+}
+.index-card .index-card-topline {
+  position: absolute;
+  top: 2.1rem; left: 0; right: 0;
+  border-top: 1px solid var(--margin-red);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.index-card.lift:hover {
+  transform: rotate(-0.6deg) translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+@media (prefers-reduced-motion: reduce) {
+  .index-card.lift:hover { transform: none; }
+}
+
+/* ── Folder tabs (semester switcher, nav) ───────────────── */
+.tab-strip {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  padding: 0 var(--space-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-strip::-webkit-scrollbar { display: none; }
+
+.folder-tab {
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-4);
+  background: var(--paper-shade);
+  color: var(--ink-soft);
+  border: 1px solid rgba(32, 37, 53, 0.10);
+  border-bottom: none;
+  border-radius: var(--radius-tab);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  position: relative;
+  top: 2px;
+  transition: background var(--dur-1), color var(--dur-1), top var(--dur-1);
+}
+.folder-tab:hover { background: var(--paper); }
+.folder-tab.active {
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  top: 0;
+  padding-bottom: calc(var(--space-2) + 2px);
+  box-shadow: 0 -2px 4px rgba(32, 37, 53, 0.06);
+}
+/* Optional class-color strip across the top of a tab. */
+.folder-tab .tab-color {
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--tab-color, transparent);
+}
+
+/* ── Sticky note (settings touches, callouts) ───────────── */
+.sticky-note {
+  background: linear-gradient(rgba(255, 255, 255, 0.25), transparent 30%), var(--hl-yellow), var(--paper);
+  background-color: #fbe9a9;
+  padding: var(--space-4);
+  box-shadow: var(--shadow-card);
+  border-radius: 2px;
+  transform: rotate(-1deg);
+  max-width: 24rem;
+}
+
+/* ── Highlighter mark over text ─────────────────────────── */
+.hl {
+  background: linear-gradient(transparent 15%, var(--hl-yellow) 16% 88%, transparent 89%);
+  padding: 0 0.15em;
+}
+.hl.green { background: linear-gradient(transparent 15%, var(--hl-green) 16% 88%, transparent 89%); }
+.hl.pink  { background: linear-gradient(transparent 15%, var(--hl-pink) 16% 88%, transparent 89%); }
+
+/* ── Desk decorations (SVG pencils/erasers from decorations.js) ──
+   Sit AROUND the study surface, never over content; hidden on phones
+   where every pixel is content. */
+.desk-decor {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.desk-decor svg { position: absolute; opacity: 0.9; }
+.desk-decor .decor-pencil  { top: 18px; right: -40px; transform: rotate(24deg); }
+.desk-decor .decor-eraser  { bottom: 26px; left: 18px; transform: rotate(-14deg); }
+.desk-decor .decor-clip    { top: 140px; left: -14px; transform: rotate(-32deg); }
+@media (max-width: 760px) {
+  .desk-decor { display: none; }
+}
+
+/* App content always layers above decorations. */
+.app-layer { position: relative; z-index: 1; }

@@ -1,16 +1,18 @@
-// AuthPage.js — plain sign-in / sign-up screen.
-// Deliberately minimal: Phase 2 gives it the paper-and-desk treatment.
+// AuthPage.js — sign-in / sign-up screen on the desk.
 // Only the session wrapper is called here — no Supabase imports.
 
+import { mountDeskDecorations } from '../ui/decorations.js';
+
 export function renderAuthPage(container, { session }) {
+  mountDeskDecorations();
   let mode = 'signin'; // 'signin' | 'signup'
 
   function render() {
     const isSignUp = mode === 'signup';
     container.innerHTML = `
-      <main class="auth-wrap">
-        <form class="auth-card" id="auth-form">
-          <h1>StudyBlitz</h1>
+      <main class="auth-wrap app-layer">
+        <form class="auth-card paper-sheet" id="auth-form">
+          <h1 class="wordmark" style="font-size:var(--text-2xl)">Study<span class="accent">Blitz</span></h1>
           <p class="auth-sub">${isSignUp ? 'Create your account' : 'Welcome back'}</p>
 
           <label for="auth-email">Email</label>
