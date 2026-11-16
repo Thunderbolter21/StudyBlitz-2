@@ -143,6 +143,22 @@ export function createRepos({ db, sync, userId, now = () => Date.now() }) {
     },
     update: (id, fields) => save('questions', 'id', { id, ...fields }),
     remove: (id) => softDelete('questions', 'id', id),
+    // Swap a deck's entire question set (builder fill / regeneration):
+    // tombstone the old rows, then insert the new ones.
+    async replaceForDeck(deckId, questionRows) {
+      for (const q of await this.listByDeck(deckId)) {
+        await softDelete('questions', 'id', q.id);
+      }
+      return this.createMany(deckId, questionRows);
+    },
+  };
+
+  // ── Source files (regeneration metadata; bytes live in Storage) ──────────
+  const sourceFiles = {
+    listByDeck: (deckId) => listByIndex('source_files', 'deckId', deckId),
+    create: (fields) => save('source_files', 'id', fields),
+    update: (id, fields) => save('source_files', 'id', { id, ...fields }),
+    remove: (id) => softDelete('source_files', 'id', id),
   };
 
   // ── Card memory (SM-2 records) ───────────────────────────────────────────
@@ -165,7 +181,8 @@ export function createRepos({ db, sync, userId, now = () => Date.now() }) {
     async list() {
       return (await listLive('presets')).sort(byOrder);
     },
-    create: (name, body) => save('presets', 'id', { name, body, sortOrder: 0 }),
+    create: ({ name, body, description = '' }) =>
+      save('presets', 'id', { name, body, description, sortOrder: 0 }),
     update: (id, fields) => save('presets', 'id', { id, ...fields }),
     remove: (id) => softDelete('presets', 'id', id),
   };
@@ -220,5 +237,6 @@ export function createRepos({ db, sync, userId, now = () => Date.now() }) {
     presets,
     settings,
     highScores,
+    sourceFiles,
   };
 }

@@ -47,7 +47,7 @@ export const TABLES = {
   },
   presets: {
     pk: 'id',
-    columns: ['name', 'body', 'sortOrder'],
+    columns: ['name', 'description', 'body', 'sortOrder'],
     indexes: [],
   },
   user_settings: {

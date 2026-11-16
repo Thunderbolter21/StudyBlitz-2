@@ -23,11 +23,13 @@ import { createSession } from './data/session.js';
 import { openDb } from './data/db.js';
 import { createSync } from './data/sync.js';
 import { createRepos } from './data/repositories.js';
+import { createSourcesService } from './data/sources.js';
 import { createStore } from './data/store.js';
 import { renderShell } from './ui/shell.js';
 import { startRouter } from './ui/router.js';
 import { renderAuthPage } from './pages/AuthPage.js';
 import { renderHomePage } from './pages/HomePage.js';
+import { renderBuilderPage } from './pages/BuilderPage.js';
 import { renderStyleGuidePage } from './pages/StyleGuidePage.js';
 
 const app = document.getElementById('app');
@@ -57,6 +59,7 @@ async function startApp(client, session, supaSession) {
   });
 
   const repos = createRepos({ db, sync, userId: user.id });
+  const sources = createSourcesService({ client, userId: user.id, repos });
 
   // Cross-tab: tell sibling tabs when this tab writes, and re-render when
   // they do. The `remote` flag prevents an echo loop between tabs.
@@ -79,8 +82,9 @@ async function startApp(client, session, supaSession) {
   const stopRouter = startRouter({
     outlet: shell.outlet,
     routes: {
-      '': (outlet) => renderHomePage(outlet, { repos, sync, appStore }),
-      'home': (outlet) => renderHomePage(outlet, { repos, sync, appStore }),
+      '': (outlet) => renderHomePage(outlet, { repos, sync, appStore, sources }),
+      'home': (outlet) => renderHomePage(outlet, { repos, sync, appStore, sources }),
+      'builder': (outlet, params) => renderBuilderPage(outlet, { repos, sources, params }),
       'styleguide': (outlet) => renderStyleGuidePage(outlet),
     },
     onNavigate: (route) => shell.setActive(route || 'home'),

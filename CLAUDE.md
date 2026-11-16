@@ -14,11 +14,17 @@ Read it to port behavior faithfully; never copy its architecture
 
 ## Current state
 
-- **Phase 3 (hierarchy UI) — complete; awaiting Matt's review.**
-- E2E verification: `scripts/e2e-home.mjs` drives the real app in headless
-  Edge via CDP (sign-in with the test account → create semester/class/deck
-  through the UI → screenshots → delete everything). Run the dev server
-  first. `scripts/clean-test-account.mjs` wipes the test account's rows.
+- **Phase 4 (quiz builder) — complete; awaiting Matt's review.**
+- ⚠ Migration `0002_preset_description.sql` must be run in the Supabase SQL
+  editor BEFORE saving custom presets (adds presets.description). Until
+  then a saved preset will fail to sync (unknown column).
+- Live generation with a real Anthropic key has NOT been exercised yet —
+  the test account has no key. Everything up to the API call is e2e-tested;
+  the API layer itself is unit-tested against v1's behavior.
+- E2E verification: `scripts/e2e-home.mjs` + `scripts/e2e-builder.mjs`
+  drive the real app in headless Edge via CDP (shared harness in
+  `scripts/lib/cdp.mjs`; creds read from .env, never hardcoded). Run the
+  dev server first. `scripts/clean-test-account.mjs` wipes the test account.
 - The component reference is the `#styleguide` page (viewable WITHOUT
   signing in). If a component isn't shown there, it doesn't exist yet.
   Token contrast is enforced by `src/styles/tokens.test.js`.
@@ -173,7 +179,13 @@ server_updated_at > cursor`). See `supabase/migrations/0001_init.sql`.
    sections with color, deck index cards, full CRUD/move/archive flows,
    empty states, hydration loading state (never show "welcome" while the
    first pull is still running — it invites duplicate data).
-4. Quiz Builder + presets + API key (+ DOCX/PPTX/URL inputs).
+4. ✅ Quiz Builder + presets + API key (+ DOCX/PPTX/URL inputs). API-key
+   path is PRIMARY; claude.ai copy-prompt/JSON-import is a collapsed
+   fallback. src/ai/ holds the ported v1 pipeline (prompt, self-healing
+   JSON, 529 backoff, friendly errors) — all unit-tested. Regeneration
+   modal reuses stored sources from the private bucket. Storage objects
+   are NEVER deleted on deck delete (Save-as-New shares paths); Phase 6
+   adds GC.
 5. Quiz engine port (parity tests, feedback reskin with v1 timing).
 6. Polish & ship: backup, onboarding, a11y, perf, PWA, deploy checklist.
 

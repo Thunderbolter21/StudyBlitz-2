@@ -8,8 +8,9 @@ import { promptModal, confirmModal, selectModal, classFormModal } from '../ui/di
 import { openMenu } from '../ui/menu.js';
 import { showToast } from '../ui/toast.js';
 import { EMPTY_PENCIL } from '../ui/decorations.js';
+import { openRegenerateModal } from './RegenModal.js';
 
-export function renderHomePage(outlet, { repos, sync, appStore }) {
+export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
   let renderToken = 0; // ignore stale async renders
   let sawHydrated = false;
 
@@ -216,6 +217,12 @@ export function renderHomePage(outlet, { repos, sync, appStore }) {
       }
     }
     openMenu(anchor, [
+      { label: 'Fill from Quiz Builder…', onClick: () => {
+          location.hash = `builder?deck=${deck.id}`;
+        } },
+      { label: 'Regenerate…', onClick: () => {
+          void openRegenerateModal({ deck, repos, sources });
+        } },
       { label: 'Rename', onClick: async () => {
           const name = await promptModal({ title: 'Rename deck', initial: deck.name });
           if (name) await repos.decks.update(deck.id, { name });
