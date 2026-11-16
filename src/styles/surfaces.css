@@ -52,13 +52,6 @@
   border-left: 5px solid var(--card-color, var(--graphite));
   transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2);
 }
-.index-card .index-card-topline {
-  position: absolute;
-  top: 2.1rem; left: 0; right: 0;
-  border-top: 1px solid var(--margin-red);
-  opacity: 0.6;
-  pointer-events: none;
-}
 .index-card.lift:hover {
   transform: rotate(-0.6deg) translateY(-3px);
   box-shadow: var(--shadow-lift);

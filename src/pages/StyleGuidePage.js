@@ -71,7 +71,6 @@ export function renderStyleGuidePage(outlet) {
              ['MATH 125 — Limits', 'class-6', '20 questions · new']]
             .map(([name, color, meta]) => `
               <div class="index-card lift" style="--card-color:var(--${color});width:15rem">
-                <div class="index-card-topline"></div>
                 <strong style="font-family:var(--font-serif)">${name}</strong>
                 <div style="font-size:var(--text-xs);color:var(--ink-soft);margin-top:var(--space-3)">${meta}</div>
               </div>`).join('')}

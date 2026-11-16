@@ -106,7 +106,6 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
                   : `<div class="deck-grid">
                       ${decks.map((d) => `
                         <div class="index-card lift deck-card" style="--card-color:${esc(cls.color)}">
-                          <div class="index-card-topline"></div>
                           <button class="icon-btn" data-deck-menu="${d.id}" aria-label="Deck options">⋯</button>
                           <span class="deck-title">${esc(d.name)}</span>
                           <span class="deck-meta">
