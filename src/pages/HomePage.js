@@ -9,6 +9,10 @@ import { openMenu } from '../ui/menu.js';
 import { showToast } from '../ui/toast.js';
 import { EMPTY_PENCIL } from '../ui/decorations.js';
 import { openRegenerateModal } from './RegenModal.js';
+import {
+  openQuizModal, startDrill, collectDueQuestions, collectWeakQuestions,
+} from './QuizLauncher.js';
+import { isWeak, isMastered } from '../engine/sm2.js';
 
 export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
   let renderToken = 0; // ignore stale async renders
@@ -51,16 +55,30 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
 
     const classes = (await repos.classes.listBySemester(current.id))
       .sort((a, b) => a.name.localeCompare(b.name));
+
+    // One pass over memory records for per-deck stats + the due callout.
+    const recordsByQ = new Map();
+    for (const rec of await repos.cardMemory.list()) recordsByQ.set(rec.questionId, rec);
+
     const decksByClass = new Map();
-    const countByDeck = new Map();
+    const statsByDeck = new Map(); // deckId → {count, mastered, weak}
     for (const cls of classes) {
       const decks = (await repos.decks.listByClass(cls.id))
         .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
       decksByClass.set(cls.id, decks);
       for (const deck of decks) {
-        countByDeck.set(deck.id, (await repos.questions.listByDeck(deck.id)).length);
+        const qs = await repos.questions.listByDeck(deck.id);
+        let mastered = 0;
+        let weak = 0;
+        for (const q of qs) {
+          const rec = recordsByQ.get(q.id);
+          if (rec && isMastered(rec)) mastered++;
+          if (rec && isWeak(rec)) weak++;
+        }
+        statsByDeck.set(deck.id, { count: qs.length, mastered, weak });
       }
     }
+    const { due: dueQuestions, records: dueRecords } = await collectDueQuestions(repos);
     if (token !== renderToken) return;
 
     outlet.innerHTML = `
@@ -80,6 +98,14 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
             ${current.archivedAt ? '<span class="archived-badge">archived</span>' : ''}</h2>
           <button class="icon-btn" data-sem-menu aria-label="Semester options">⋯</button>
         </div>
+
+        ${dueQuestions.length ? `
+          <div class="feedback-card fb-correct" style="display:flex;align-items:center;
+               gap:var(--space-3);justify-content:space-between;margin-bottom:var(--space-4)">
+            <span>📅 <strong>${dueQuestions.length}</strong> card${dueQuestions.length === 1 ? '' : 's'}
+              due for review — timed to catch you right before you forget.</span>
+            <button class="btn-primary" data-review-due style="flex-shrink:0">▶ Review now</button>
+          </div>` : ''}
 
         ${classes.length === 0 ? `
           <div class="empty-state">
@@ -101,18 +127,27 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
                   <button class="icon-btn" data-class-menu="${cls.id}" aria-label="Class options">⋯</button>
                 </div>
                 ${decks.length === 0
-                  ? `<p class="class-empty">No decks yet — add one, then fill it from the
-                     Quiz Builder <span class="hand">(coming in Phase 4)</span>.</p>`
+                  ? `<p class="class-empty">No decks yet — add one, then fill it from the Quiz Builder.</p>`
                   : `<div class="deck-grid">
-                      ${decks.map((d) => `
-                        <div class="index-card lift deck-card" style="--card-color:${esc(cls.color)}">
+                      ${decks.map((d) => {
+                        const st = statsByDeck.get(d.id);
+                        const pct = st.count ? Math.round((st.mastered / st.count) * 100) : 0;
+                        return `
+                        <div class="index-card lift deck-card" style="--card-color:${esc(cls.color)}"
+                             data-deck-open="${d.id}" role="button" tabindex="0"
+                             aria-label="Quiz ${esc(d.name)}">
                           <button class="icon-btn" data-deck-menu="${d.id}" aria-label="Deck options">⋯</button>
                           <span class="deck-title">${esc(d.name)}</span>
+                          <div class="pencil-progress" style="margin-top:var(--space-1)">
+                            <div class="fill" style="width:${pct}%"></div>
+                          </div>
                           <span class="deck-meta">
-                            ${countByDeck.get(d.id)} question${countByDeck.get(d.id) === 1 ? '' : 's'}
-                            · ${new Date(d.createdAt).toLocaleDateString()}
+                            ${st.count} question${st.count === 1 ? '' : 's'}
+                            · ${st.mastered} mastered${st.weak
+                              ? ` · <span style="color:var(--pen-red)">${st.weak} weak</span>` : ''}
                           </span>
-                        </div>`).join('')}
+                        </div>`;
+                      }).join('')}
                     </div>`}
               </section>`;
           }).join('')}
@@ -120,7 +155,7 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
         `}
       </div>`;
 
-    wire(current, { active, archived, classes, decksByClass });
+    wire(current, { active, archived, classes, decksByClass, dueQuestions, dueRecords });
   }
 
   function renderFirstRun() {
@@ -177,6 +212,14 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
 
   function classMenu(anchor, cls, otherSemesters) {
     openMenu(anchor, [
+      { label: 'Drill weak spots…', onClick: async () => {
+          const decks = await repos.decks.listByClass(cls.id);
+          const { weak, records } = await collectWeakQuestions(repos, decks);
+          startDrill({
+            repos, name: `${cls.name} — Weak spots`,
+            questions: weak, records, onExit: () => void render(),
+          });
+        } },
       { label: 'Rename / recolor', onClick: async () => {
           const result = await classFormModal({
             title: 'Edit class', name: cls.name, color: cls.color,
@@ -244,7 +287,37 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
   }
 
   // ── Event wiring for one rendered view ───────────────────────────────────
-  function wire(current, { archived, classes, decksByClass }) {
+  function wire(current, { archived, classes, decksByClass, dueQuestions, dueRecords }) {
+    // Deck cards launch the quiz modal (anywhere except the ⋯ button).
+    const openDeck = async (id) => {
+      for (const decks of decksByClass.values()) {
+        const deck = decks.find((d) => d.id === id);
+        if (deck) return openQuizModal({ repos, deck, onExit: () => void render() });
+      }
+    };
+    for (const card of outlet.querySelectorAll('[data-deck-open]')) {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.icon-btn')) return; // the menu, not the card
+        void openDeck(card.dataset.deckOpen);
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          void openDeck(card.dataset.deckOpen);
+        }
+      });
+    }
+
+    const reviewBtn = outlet.querySelector('[data-review-due]');
+    if (reviewBtn) {
+      reviewBtn.onclick = () =>
+        startDrill({
+          repos, name: 'Review — due cards',
+          questions: dueQuestions, records: dueRecords,
+          onExit: () => void render(),
+        });
+    }
+
     outlet.querySelector('#sem-tabs').onclick = async (e) => {
       const tab = e.target.closest('.folder-tab');
       if (!tab) return;

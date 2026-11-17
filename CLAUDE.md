@@ -14,17 +14,22 @@ Read it to port behavior faithfully; never copy its architecture
 
 ## Current state
 
-- **Phase 4 (quiz builder) — complete; awaiting Matt's review.**
-- ⚠ Migration `0002_preset_description.sql` must be run in the Supabase SQL
-  editor BEFORE saving custom presets (adds presets.description). Until
-  then a saved preset will fail to sync (unknown column).
-- Live generation with a real Anthropic key has NOT been exercised yet —
-  the test account has no key. Everything up to the API call is e2e-tested;
-  the API layer itself is unit-tested against v1's behavior.
-- E2E verification: `scripts/e2e-home.mjs` + `scripts/e2e-builder.mjs`
-  drive the real app in headless Edge via CDP (shared harness in
-  `scripts/lib/cdp.mjs`; creds read from .env, never hardcoded). Run the
-  dev server first. `scripts/clean-test-account.mjs` wipes the test account.
+- **Phase 5 (quiz engine) — complete; awaiting Matt's review.** Phase 4 is
+  verified live (real generation + phone sync confirmed by Matt).
+- SM-2 parity is enforced by `src/engine/sm2.test.js` against a VERBATIM
+  copy of v1's algorithm (`src/engine/testing/v1-oracle.js`) — 13 named
+  cases + 400 fuzz sequences. Never edit the oracle.
+- v1 bug fixed by construction: session.next() refuses to advance before
+  answer() — feedback always renders first; the FR submit keystroke stops
+  propagation so it can never double as "advance".
+- Deferred to Phase 6: per-question source-image attachment (schema ready:
+  questions.source_image_path), resume-recent, storage GC.
+- E2E verification: `scripts/e2e-home.mjs`, `e2e-builder.mjs`, and
+  `e2e-quiz.mjs` (full quiz loop: JSON-import deck → practice quiz with
+  correct/wrong/FR-bugfix beats → results → exam submit + review) via the
+  shared CDP harness in `scripts/lib/cdp.mjs` (creds from .env only).
+  Run the dev server first. `scripts/clean-test-account.mjs` wipes the
+  test account.
 - The component reference is the `#styleguide` page (viewable WITHOUT
   signing in). If a component isn't shown there, it doesn't exist yet.
   Token contrast is enforced by `src/styles/tokens.test.js`.
@@ -186,7 +191,13 @@ server_updated_at > cursor`). See `supabase/migrations/0001_init.sql`.
    modal reuses stored sources from the private bucket. Storage objects
    are NEVER deleted on deck delete (Save-as-New shares paths); Phase 6
    adds GC.
-5. Quiz engine port (parity tests, feedback reskin with v1 timing).
+5. ✅ Quiz engine port: sm2.js (parity-proven), grading.js, session.js
+   (state machine + TIMING constants = the v1 contract), QuizPage/
+   ExamPage/QuizLauncher overlays, fix-answer tools, clickable deck
+   cards, due-review callout, class/deck weak-spot drills, #review?deck=
+   deep link. Memory "resets" overwrite with emptyRecord() — NEVER
+   soft-delete a card_memory row (tombstones are terminal and would
+   permanently block that question's memory).
 6. Polish & ship: backup, onboarding, a11y, perf, PWA, deploy checklist.
 
 ## Gotchas

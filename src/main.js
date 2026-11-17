@@ -16,6 +16,7 @@ import './styles/tokens.css';
 import './styles/global.css';
 import './styles/surfaces.css';
 import './styles/components.css';
+import './styles/quiz.css';
 
 import { isSupabaseConfigured } from './config.js';
 import { createSupabaseClient } from './data/supabase.js';
@@ -86,6 +87,20 @@ async function startApp(client, session, supaSession) {
       'home': (outlet) => renderHomePage(outlet, { repos, sync, appStore, sources }),
       'builder': (outlet, params) => renderBuilderPage(outlet, { repos, sources, params }),
       'styleguide': (outlet) => renderStyleGuidePage(outlet),
+      // Deep link: #review?deck=ID quick-starts that deck (v1 behavior),
+      // then settles on home so Back doesn't relaunch the quiz.
+      'review': (outlet, params) => {
+        const deckId = params.get('deck');
+        void (async () => {
+          const { quickStartDeck } = await import('./pages/QuizLauncher.js');
+          const deck = deckId ? await repos.decks.get(deckId) : null;
+          history.replaceState(null, '', location.pathname + '#home');
+          if (deck) {
+            await quickStartDeck({ repos, deck, onExit: () => { location.hash = 'home'; } });
+          }
+          renderHomePage(outlet, { repos, sync, appStore, sources });
+        })();
+      },
     },
     onNavigate: (route) => shell.setActive(route || 'home'),
   });
