@@ -96,8 +96,10 @@
   transition: transform var(--dur-1), border-color var(--dur-1);
   overflow: hidden;
 }
-.opt-btn:hover:not(:disabled) { transform: translateX(4px); border-color: var(--graphite); }
-.opt-btn:disabled { cursor: default; }
+.opt-btn:hover:not(.locked) { transform: translateX(4px); border-color: var(--graphite); }
+/* Locked after answering: block interaction WITHOUT dimming — every choice
+   stays at full brightness; only the colored states below change. */
+.opt-btn.locked { cursor: default; pointer-events: none; }
 .opt-key {
   font-family: var(--font-serif);
   font-weight: 700;
@@ -122,9 +124,29 @@
 .opt-btn.opt-correct > * { position: relative; z-index: 1; }
 .opt-btn.opt-correct .opt-key { background: var(--pen-green); color: var(--paper); }
 
-/* Wrong pick: red ink. */
-.opt-btn.opt-wrong { border-color: var(--pen-red); opacity: 0.75; }
+/* Missed correct (multi-select): a clear green outline, no filled sweep,
+   so it reads as "this was also right" without masquerading as your pick. */
+.opt-btn.opt-missed { border: 2px solid var(--pen-green); }
+
+/* Wrong pick: red ink — full brightness, NO opacity change. */
+.opt-btn.opt-wrong { border-color: var(--pen-red); }
 .opt-btn.opt-wrong .opt-key { background: var(--pen-red); color: var(--paper); }
+
+/* Check / cross marks so right vs wrong is never signaled by color alone.
+   Sit above the highlighter sweep, pinned to the trailing edge. */
+.opt-btn.opt-correct::after,
+.opt-btn.opt-missed::after { content: '✓'; color: var(--pen-green); }
+.opt-btn.opt-wrong::after { content: '✗'; color: var(--pen-red); }
+.opt-btn.opt-correct::after,
+.opt-btn.opt-missed::after,
+.opt-btn.opt-wrong::after {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  font-weight: 700;
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
 
 /* Free response + multi-select */
 .fr-row { display: flex; gap: var(--space-2); }
@@ -215,8 +237,15 @@
   cursor: pointer;
 }
 .exam-opt:hover { background: var(--paper-shade); }
+/* Review states: full brightness, marks + (line-through) so none rely on
+   color alone. Chosen-correct fills green; missed-correct gets a green
+   outline; wrong pick is red with a strike. */
 .exam-opt.review-correct { background: var(--hl-green); }
-.exam-opt.review-wrong-pick { background: rgba(176, 42, 33, 0.1); text-decoration: line-through; }
+.exam-opt.review-missed { outline: 2px solid var(--pen-green); outline-offset: -2px; }
+.exam-opt.review-wrong-pick { background: rgba(176, 42, 33, 0.14); text-decoration: line-through; }
+.exam-opt.review-correct::after,
+.exam-opt.review-missed::after { content: '✓'; color: var(--pen-green); margin-left: auto; font-weight: 700; }
+.exam-opt.review-wrong-pick::after { content: '✗'; color: var(--pen-red); margin-left: auto; font-weight: 700; text-decoration: none; }
 .exam-review-note {
   background: var(--paper-shade);
   border-left: 4px solid var(--pen-red);

@@ -199,22 +199,30 @@ export function launchQuizOverlay({
   function showFeedback(res, { mcIndex, msSelected } = {}) {
     const q = res.question;
 
+    // Lock a choice WITHOUT dimming it: pointer-events:none + aria-disabled,
+    // never the `disabled` attribute (which the global style fades).
+    const lock = (btn) => { btn.classList.add('locked'); btn.setAttribute('aria-disabled', 'true'); };
+
     if (q.type === 'mc') {
       for (const btn of overlay.querySelectorAll('[data-mc]')) {
         const i = Number(btn.dataset.mc);
-        btn.disabled = true;
+        lock(btn);
         if (i === q.ans) btn.classList.add('opt-correct');       // correct shown both ways (v1 :581)
         if (!res.correct && i === mcIndex) btn.classList.add('opt-wrong');
       }
     } else if (q.type === 'multi-select') {
       for (const btn of overlay.querySelectorAll('[data-ms]')) {
         const i = Number(btn.dataset.ms);
-        btn.disabled = true;
-        if (q.ans.includes(i)) btn.classList.add('opt-correct');
-        else if (msSelected?.includes(i)) btn.classList.add('opt-wrong');
+        lock(btn);
+        btn.classList.remove('ms-selected'); // let the result color own the key badge
+        const isCorrect = q.ans.includes(i);
+        const wasPicked = msSelected?.includes(i);
+        if (isCorrect && wasPicked) btn.classList.add('opt-correct');   // got it → green fill
+        else if (isCorrect) btn.classList.add('opt-missed');            // should have → green outline
+        else if (wasPicked) btn.classList.add('opt-wrong');            // shouldn't have → red
       }
       const ms = overlay.querySelector('#ms-submit');
-      if (ms) ms.disabled = true;
+      if (ms) ms.disabled = true; // the Submit action button may dim; it's not a choice
     }
 
     g('qz-feedback').innerHTML = `

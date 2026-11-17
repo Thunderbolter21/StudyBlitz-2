@@ -119,7 +119,9 @@ export function launchExamOverlay({ deckName, questions: rawQuestions, records, 
       bodyHtml = q.opts.map((o, j) => {
         const classes = ['exam-opt'];
         if (review) {
-          if (q.ans.includes(j)) classes.push('review-correct');
+          // chosen-correct → filled green · missed-correct → green outline ·
+          // wrong pick → red. Nothing dims; marks carry the signal too.
+          if (q.ans.includes(j)) classes.push(sel.includes(j) ? 'review-correct' : 'review-missed');
           else if (sel.includes(j)) classes.push('review-wrong-pick');
         }
         return review
