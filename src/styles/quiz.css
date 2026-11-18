@@ -180,6 +180,16 @@
 .fb-wrong .fb-explain { font-style: italic; }
 .fix-row { display: flex; gap: var(--space-2); margin-top: var(--space-2); flex-wrap: wrap; }
 .fix-row .btn-link { font-size: var(--text-xs); padding: var(--space-1); min-height: auto; }
+.source-img-wrap { margin-top: var(--space-2); }
+.source-img-label { font-size: var(--text-xs); color: var(--ink-soft); margin-bottom: var(--space-1); }
+.source-img-thumb {
+  max-width: 180px; max-height: 120px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--paper-shade);
+  box-shadow: var(--shadow-card);
+  cursor: zoom-in;
+  display: block;
+}
 
 /* ── Next / submit ───────────────────────────────────────── */
 .quiz-next {

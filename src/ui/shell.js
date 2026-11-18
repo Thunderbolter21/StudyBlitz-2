@@ -7,6 +7,7 @@ import { mountDeskDecorations } from './decorations.js';
 const NAV_TABS = [
   { route: 'home', label: 'Home' },
   { route: 'builder', label: 'Quiz Builder' },
+  { route: 'settings', label: 'Settings' },
   { route: 'styleguide', label: 'Style Guide' },
 ];
 

@@ -31,6 +31,7 @@ import { startRouter } from './ui/router.js';
 import { renderAuthPage } from './pages/AuthPage.js';
 import { renderHomePage } from './pages/HomePage.js';
 import { renderBuilderPage } from './pages/BuilderPage.js';
+import { renderSettingsPage } from './pages/SettingsPage.js';
 import { renderStyleGuidePage } from './pages/StyleGuidePage.js';
 
 const app = document.getElementById('app');
@@ -86,6 +87,7 @@ async function startApp(client, session, supaSession) {
       '': (outlet) => renderHomePage(outlet, { repos, sync, appStore, sources }),
       'home': (outlet) => renderHomePage(outlet, { repos, sync, appStore, sources }),
       'builder': (outlet, params) => renderBuilderPage(outlet, { repos, sources, params }),
+      'settings': (outlet) => renderSettingsPage(outlet, { repos, session }),
       'styleguide': (outlet) => renderStyleGuidePage(outlet),
       // Deep link: #review?deck=ID quick-starts that deck (v1 behavior),
       // then settles on home so Back doesn't relaunch the quiz.
@@ -96,7 +98,7 @@ async function startApp(client, session, supaSession) {
           const deck = deckId ? await repos.decks.get(deckId) : null;
           history.replaceState(null, '', location.pathname + '#home');
           if (deck) {
-            await quickStartDeck({ repos, deck, onExit: () => { location.hash = 'home'; } });
+            await quickStartDeck({ repos, sources, deck, onExit: () => { location.hash = 'home'; } });
           }
           renderHomePage(outlet, { repos, sync, appStore, sources });
         })();

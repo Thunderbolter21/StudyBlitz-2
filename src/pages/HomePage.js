@@ -11,6 +11,7 @@ import { EMPTY_PENCIL } from '../ui/decorations.js';
 import { openRegenerateModal } from './RegenModal.js';
 import {
   openQuizModal, startDrill, collectDueQuestions, collectWeakQuestions,
+  getRecentQuiz, relaunchRecent,
 } from './QuizLauncher.js';
 import { isWeak, isMastered } from '../engine/sm2.js';
 
@@ -79,7 +80,10 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
       }
     }
     const { due: dueQuestions, records: dueRecords } = await collectDueQuestions(repos);
+    const recent = await getRecentQuiz(repos);
     if (token !== renderToken) return;
+
+    const MODE_LABEL = { standard: 'Practice', exam: 'Exam', timechallenge: 'Time challenge' };
 
     outlet.innerHTML = `
       <div class="tab-strip" id="sem-tabs">
@@ -98,6 +102,15 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
             ${current.archivedAt ? '<span class="archived-badge">archived</span>' : ''}</h2>
           <button class="icon-btn" data-sem-menu aria-label="Semester options">⋯</button>
         </div>
+
+        ${recent ? `
+          <div class="feedback-card" style="display:flex;align-items:center;
+               gap:var(--space-3);justify-content:space-between;margin-bottom:var(--space-3);
+               border-left-color:var(--pen-blue)">
+            <span>↩ Resume <strong>${esc(recent.deck.name)}</strong>
+              <span class="auth-sub" style="display:inline">· ${MODE_LABEL[recent.mode] || 'Practice'}</span></span>
+            <button class="btn-ghost" data-resume style="flex-shrink:0">▶ Resume</button>
+          </div>` : ''}
 
         ${dueQuestions.length ? `
           <div class="feedback-card fb-correct" style="display:flex;align-items:center;
@@ -216,7 +229,7 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
           const decks = await repos.decks.listByClass(cls.id);
           const { weak, records } = await collectWeakQuestions(repos, decks);
           startDrill({
-            repos, name: `${cls.name} — Weak spots`,
+            repos, sources, name: `${cls.name} — Weak spots`,
             questions: weak, records, onExit: () => void render(),
           });
         } },
@@ -281,7 +294,13 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
             title: `Delete ${deck.name}?`,
             bodyText: 'This permanently deletes the deck and its questions on every device. There is no undo.',
           });
-          if (ok) { await repos.decks.remove(deck.id); showToast('Deck deleted'); }
+          if (!ok) return;
+          // Reference-aware: free stored source files/images first (while the
+          // deck is still live so other decks' references can be counted),
+          // then tombstone the deck + questions.
+          await sources.deleteForDeck(deck.id);
+          await repos.decks.remove(deck.id);
+          showToast('Deck deleted');
         } },
     ]);
   }
@@ -292,7 +311,7 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
     const openDeck = async (id) => {
       for (const decks of decksByClass.values()) {
         const deck = decks.find((d) => d.id === id);
-        if (deck) return openQuizModal({ repos, deck, onExit: () => void render() });
+        if (deck) return openQuizModal({ repos, sources, deck, onExit: () => void render() });
       }
     };
     for (const card of outlet.querySelectorAll('[data-deck-open]')) {
@@ -312,10 +331,15 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
     if (reviewBtn) {
       reviewBtn.onclick = () =>
         startDrill({
-          repos, name: 'Review — due cards',
+          repos, sources, name: 'Review — due cards',
           questions: dueQuestions, records: dueRecords,
           onExit: () => void render(),
         });
+    }
+
+    const resumeBtn = outlet.querySelector('[data-resume]');
+    if (resumeBtn) {
+      resumeBtn.onclick = () => relaunchRecent({ repos, sources, onExit: () => void render() });
     }
 
     outlet.querySelector('#sem-tabs').onclick = async (e) => {

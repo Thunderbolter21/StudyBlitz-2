@@ -41,5 +41,23 @@ export function createSession(client) {
     async signOut() {
       await client.auth.signOut();
     },
+
+    // Who's signed in right now (for Settings display).
+    async currentUser() {
+      const { data } = await client.auth.getUser();
+      return data.user ?? null;
+    },
+
+    // Change email. Supabase emails a confirmation link to the NEW address
+    // (and, if configured, the old one); the change applies once clicked.
+    async changeEmail(email) {
+      const { error } = await client.auth.updateUser({ email });
+      return error ? error.message : null;
+    },
+
+    async changePassword(password) {
+      const { error } = await client.auth.updateUser({ password });
+      return error ? error.message : null;
+    },
   };
 }

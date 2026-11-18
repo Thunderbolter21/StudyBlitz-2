@@ -12,6 +12,9 @@
 import { createSession, TIMING } from '../engine/session.js';
 import { isWeak } from '../engine/sm2.js';
 import { openFixAnswer, openEditQuestion } from './QuizFixTools.js';
+import { showToast } from '../ui/toast.js';
+import { openMenu } from '../ui/menu.js';
+import { readAsDataURL } from '../ai/extract-files.js';
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) =>
@@ -20,7 +23,7 @@ const esc = (s) =>
 const LETTERS = ['A', 'B', 'C', 'D'];
 
 export function launchQuizOverlay({
-  deckName, deckId = null, mode, questions, records, repos, tcSecs = 60, onExit,
+  deckName, deckId = null, mode, questions, records, repos, sources = null, tcSecs = 60, onExit,
 }) {
   const session = createSession({
     mode,
@@ -236,7 +239,9 @@ export function launchQuizOverlay({
         <div class="fix-row">
           <button class="btn-link" id="fx-ans">✏️ Fix answer</button>
           <button class="btn-link" id="fx-text">✏️ Edit question</button>
+          ${sources ? `<button class="btn-link" id="fx-img">${q.sourceImagePath ? '🖼️ Source image' : '📎 Attach image'}</button>` : ''}
         </div>
+        <div id="qz-source-img"></div>
       </div>`;
     feedbackVisible = true;
 
@@ -247,6 +252,15 @@ export function launchQuizOverlay({
       openFixAnswer({ liveQ: q, repos, records, onFixed: () => repaintCorrect(q) });
     overlay.querySelector('#fx-text').onclick = () =>
       openEditQuestion({ liveQ: q, repos, records, onSaved: () => { g('qz-text').textContent = q.q; } });
+
+    if (sources) {
+      overlay.querySelector('#fx-img').onclick = (e) =>
+        handleImageButton(e.currentTarget, q);
+      // v1: a question's source image appears on a WRONG answer, +50ms later.
+      if (!res.correct && q.sourceImagePath) {
+        later(() => void showSourceThumb(q), TIMING.SOURCE_IMAGE_DELAY);
+      }
+    }
 
     if (isTC) {
       // v1: auto-advance +400ms while the timer is alive (:612).
@@ -262,6 +276,59 @@ export function launchQuizOverlay({
       btn.classList.remove('opt-correct', 'opt-wrong');
       if (Number(btn.dataset.mc) === q.ans) btn.classList.add('opt-correct');
     }
+  }
+
+  // ── Source image (attach / view / remove) ────────────────────────────────
+  async function showSourceThumb(q) {
+    const host = overlay.querySelector('#qz-source-img');
+    if (!host || !q.sourceImagePath) return;
+    const url = await sources.signedUrl(q.sourceImagePath);
+    if (!url || !overlay.isConnected) return;
+    host.innerHTML = `
+      <div class="source-img-wrap">
+        <div class="source-img-label">📎 Source reference</div>
+        <img class="source-img-thumb" src="${url}" alt="Source reference" title="Open full size" />
+      </div>`;
+    host.querySelector('img').onclick = () => window.open(url, '_blank', 'noopener');
+  }
+
+  function pickAndUpload(q) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) return showToast('Image too large (max 10 MB)');
+      showToast('Uploading image…');
+      const path = await sources.uploadQuestionImage(q.id, await readAsDataURL(file));
+      if (!path) return showToast('Could not upload image');
+      await repos.questions.update(q.id, { sourceImagePath: path });
+      q.sourceImagePath = path;
+      const btn = overlay.querySelector('#fx-img');
+      if (btn) btn.textContent = '🖼️ Source image';
+      showToast('✓ Source image attached');
+      void showSourceThumb(q);
+    };
+    input.click();
+  }
+
+  function handleImageButton(anchor, q) {
+    if (!q.sourceImagePath) return pickAndUpload(q);
+    openMenu(anchor, [
+      { label: 'View', onClick: () => void showSourceThumb(q) },
+      { label: 'Replace', onClick: () => pickAndUpload(q) },
+      { label: 'Remove', danger: true, onClick: async () => {
+          await sources.removeObject(q.sourceImagePath);
+          await repos.questions.update(q.id, { sourceImagePath: null });
+          q.sourceImagePath = null;
+          const btn = overlay.querySelector('#fx-img');
+          if (btn) btn.textContent = '📎 Attach image';
+          const host = overlay.querySelector('#qz-source-img');
+          if (host) host.innerHTML = '';
+          showToast('Source image removed');
+        } },
+    ]);
   }
 
   function advance() {

@@ -7,6 +7,7 @@
 // URLs are metadata-only rows (kind 'url').
 
 import { compressToBase64, decompressFromBase64, base64ToBytes, bytesToBase64 } from '../engine/compress.js';
+import { compressImage } from '../ai/extract-files.js';
 
 const BUCKET = 'source-files';
 
@@ -65,13 +66,66 @@ export function createSourcesService({ client, userId, repos }) {
       return decompressFromBase64(compressed);
     },
 
-    // Best-effort removal of a deck's stored objects (called on deck delete).
-    // Orphans are wasted space, not data loss — never block the UX on this.
+    // ── Per-question source images ──────────────────────────────────────
+    // One image per question, stored uncompressed-for-display as JPEG at
+    // user_id/qimg/question_id. Path saved on the question row.
+    async uploadQuestionImage(questionId, dataUrl) {
+      const { data } = await compressImage(dataUrl); // keeps it under the size limit
+      const path = `${userId}/qimg/${questionId}`;
+      const blob = new Blob([base64ToBytes(data)], { type: 'image/jpeg' });
+      const { error } = await client.storage.from(BUCKET).upload(path, blob, {
+        upsert: true, contentType: 'image/jpeg',
+      });
+      if (error) { console.warn('question image upload failed:', error.message); return null; }
+      return path;
+    },
+
+    // A short-lived signed URL to display a private image.
+    async signedUrl(path) {
+      if (!path) return null;
+      const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 3600);
+      if (error) { console.warn('signed url failed:', error.message); return null; }
+      return data?.signedUrl || null;
+    },
+
+    removeObject(path) {
+      if (!path) return Promise.resolve();
+      return client.storage.from(BUCKET).remove([path]).catch(() => {});
+    },
+
+    // Reference-aware cleanup when a deck is deleted. Tombstones the deck's
+    // source_files metadata and removes a stored regeneration object ONLY
+    // when no OTHER live deck still references that same storagePath (decks
+    // made via "Save as new" share paths). Per-question images are unique to
+    // a question, so they're always safe to remove.
+    // Call this BEFORE repos.decks.remove(deckId), while the deck is live.
     async deleteForDeck(deckId) {
       try {
-        const rows = await repos.sourceFiles.listByDeck(deckId);
-        const paths = rows.map((r) => r.storagePath).filter(Boolean);
-        if (paths.length) await client.storage.from(BUCKET).remove(paths);
+        // Paths still referenced by other decks' live source_files.
+        const referencedElsewhere = new Set();
+        for (const d of await repos.decks.list()) {
+          if (d.id === deckId) continue;
+          for (const sf of await repos.sourceFiles.listByDeck(d.id)) {
+            if (sf.storagePath) referencedElsewhere.add(sf.storagePath);
+          }
+        }
+
+        const toRemove = new Set();
+
+        // Regeneration source files for this deck.
+        for (const sf of await repos.sourceFiles.listByDeck(deckId)) {
+          await repos.sourceFiles.remove(sf.id); // tombstone metadata
+          if (sf.storagePath && !referencedElsewhere.has(sf.storagePath)) {
+            toRemove.add(sf.storagePath);
+          }
+        }
+
+        // Per-question source images (unique to each question → always safe).
+        for (const q of await repos.questions.listByDeck(deckId)) {
+          if (q.sourceImagePath) toRemove.add(q.sourceImagePath);
+        }
+
+        if (toRemove.size) await client.storage.from(BUCKET).remove([...toRemove]);
       } catch (err) {
         console.warn('source cleanup failed:', err?.message);
       }

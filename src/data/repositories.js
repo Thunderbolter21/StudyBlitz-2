@@ -227,6 +227,103 @@ export function createRepos({ db, sync, userId, now = () => Date.now() }) {
     },
   };
 
+  // ── Backup (Export / Import of the user's own data) ──────────────────────
+  // Carries the user's library — NOT the API key (that lives in
+  // user_settings and would be unsafe in a file) and NOT source-file bytes
+  // (those live in Storage; only the questions come back). All tables here
+  // use `id` as their primary key.
+  const BACKUP_TABLES = [
+    'semesters', 'classes', 'decks', 'questions', 'card_memory', 'presets', 'high_scores',
+  ];
+
+  // Drop sync bookkeeping + the owning user from exported rows; import
+  // re-stamps them for whoever is signed in.
+  const stripForExport = ({ userId: _u, serverUpdatedAt: _s, ...rest }) => rest;
+
+  const backup = {
+    async export() {
+      const data = {};
+      for (const table of BACKUP_TABLES) {
+        data[table] = (await db.getAll(table)).filter(isLive).map(stripForExport);
+      }
+      return {
+        app: 'StudyBlitz',
+        type: 'studyblitz2-backup',
+        version: 2,
+        exportedAt: iso(),
+        data,
+      };
+    },
+
+    // Human-readable counts for the import confirmation dialog.
+    counts(file) {
+      const d = file?.data || {};
+      return {
+        semesters: (d.semesters || []).length,
+        classes: (d.classes || []).length,
+        decks: (d.decks || []).length,
+        questions: (d.questions || []).length,
+        memory: (d.card_memory || []).length,
+        presets: (d.presets || []).length,
+      };
+    },
+
+    validate(file) {
+      if (!file || typeof file !== 'object') return 'That file is not a StudyBlitz backup.';
+      if (file.type !== 'studyblitz2-backup') return 'That is not a StudyBlitz 2 backup file.';
+      if (!file.data || typeof file.data !== 'object') return 'This backup has no data in it.';
+      if (typeof file.version !== 'number' || file.version > 2) {
+        return 'This backup was made by a newer version of StudyBlitz.';
+      }
+      return null;
+    },
+
+    // mode: 'merge' (keep the newer of each row; never clobber newer local
+    // work) or 'replace' (make the local set equal the backup, tombstoning
+    // anything the backup doesn't contain). Both go through the outbox so
+    // the result syncs like any other change.
+    async import(file, mode) {
+      const data = file.data || {};
+      for (const table of BACKUP_TABLES) {
+        const rows = Array.isArray(data[table]) ? data[table] : [];
+        const incomingIds = new Set(rows.map((r) => r.id));
+
+        for (const row of rows) {
+          const local = await db.get(table, row.id);
+          if (mode === 'merge' && local) {
+            // Respect a terminal local tombstone and a newer local edit.
+            if (local.deletedAt) continue;
+            if (String(local.updatedAt) >= String(row.updatedAt)) continue;
+          }
+          const clean = {
+            ...row,
+            userId,
+            createdAt: row.createdAt || iso(),
+            updatedAt: row.updatedAt || iso(),
+            deletedAt: null,
+          };
+          delete clean.serverUpdatedAt;
+          await db.put(table, clean);
+          await sync.enqueue(table, row.id);
+        }
+
+        if (mode === 'replace') {
+          // Tombstone any live local row the backup doesn't mention.
+          for (const existing of (await db.getAll(table)).filter(isLive)) {
+            if (!incomingIds.has(existing.id)) {
+              existing.deletedAt = iso();
+              existing.updatedAt = existing.deletedAt;
+              await db.put(table, existing);
+              await sync.enqueue(table, existing.id);
+            }
+          }
+        }
+      }
+      notify();
+      return this.counts(file);
+    },
+  };
+
   return {
     events,
     semesters,
@@ -238,5 +335,6 @@ export function createRepos({ db, sync, userId, now = () => Date.now() }) {
     settings,
     highScores,
     sourceFiles,
+    backup,
   };
 }

@@ -406,6 +406,15 @@ textarea { resize: vertical; line-height: 1.55; }
 .fallback-details { margin-top: var(--space-6); border-top: 1px dashed var(--graphite); padding-top: var(--space-3); }
 .fallback-details summary { cursor: pointer; color: var(--ink-soft); min-height: var(--touch-min); display: flex; align-items: center; }
 
+/* ── Settings page ───────────────────────────────────────── */
+.settings-section {
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--paper-shade);
+  margin-top: var(--space-4);
+}
+.settings-section:first-of-type { border-top: none; margin-top: var(--space-2); }
+.settings-section h3 { margin-bottom: var(--space-2); }
+
 /* ── Styleguide page ─────────────────────────────────────── */
 .sg-section { margin-bottom: var(--space-8); }
 .sg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: var(--space-3); }

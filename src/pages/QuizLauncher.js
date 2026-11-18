@@ -26,32 +26,73 @@ export async function loadDeckData(repos, deckId) {
 
 const getRecordFn = (records) => (q) => records.get(q.id) || emptyRecord();
 
-// One-tap quick quiz: 20 adaptive questions, standard mode (v1 :96–106).
-export async function quickStartDeck({ repos, deck, onExit }) {
+// Remember the last deck-based quiz so Home can offer "Resume" (v1's
+// recentDeck, now in synced preferences so it follows you across devices).
+function recordRecent(repos, deckId, mode, tcSecs) {
+  return repos.settings.patchPreferences({ recentQuiz: { deckId, mode, tcSecs: tcSecs || null } });
+}
+
+// Launch a specific mode for a deck — the single dispatch shared by the
+// launch modal, quick-start, and Resume. Records it as the recent quiz.
+export async function launchDeckMode({ repos, sources = null, deck, mode, count, tcSecs = 60, onExit }) {
   const { questions, records } = await loadDeckData(repos, deck.id);
   if (!questions.length) return showToast('This deck has no questions yet — fill it in the Quiz Builder');
   const getRecord = getRecordFn(records);
-  const n = Math.min(20, questions.length);
-  const picked = interleaveQuestions(weightedSample(questions, getRecord, n), getRecord);
-  launchQuizOverlay({
-    deckName: deck.name, deckId: deck.id, mode: 'standard',
-    questions: picked, records, repos, onExit,
-  });
+  const max = questions.length;
+  const n = Math.min(Math.max(5, count || Math.min(20, max)), max);
+  await recordRecent(repos, deck.id, mode, tcSecs);
+
+  if (mode === 'exam') {
+    launchExamOverlay({ deckName: deck.name, questions, records, repos, count: n, onExit });
+  } else if (mode === 'timechallenge') {
+    // v1 :153–162: whole deck, due-first, NO interleave in TC.
+    const picked = weightedSample(questions, getRecord, max);
+    launchQuizOverlay({
+      deckName: deck.name, deckId: deck.id, mode: 'timechallenge',
+      questions: picked, records, repos, sources, tcSecs, onExit,
+    });
+  } else {
+    const picked = interleaveQuestions(weightedSample(questions, getRecord, n), getRecord);
+    launchQuizOverlay({
+      deckName: deck.name, deckId: deck.id, mode: 'standard',
+      questions: picked, records, repos, sources, onExit,
+    });
+  }
+}
+
+// One-tap quick quiz: 20 adaptive questions, standard mode (v1 :96–106).
+export function quickStartDeck({ repos, sources = null, deck, onExit }) {
+  return launchDeckMode({ repos, sources, deck, mode: 'standard', onExit });
+}
+
+// Resume the most recent deck quiz (same mode), if that deck still exists.
+export async function getRecentQuiz(repos) {
+  const settings = await repos.settings.get();
+  const r = settings.preferences?.recentQuiz;
+  if (!r?.deckId) return null;
+  const deck = await repos.decks.get(r.deckId);
+  return deck ? { deck, mode: r.mode, tcSecs: r.tcSecs } : null;
+}
+
+export async function relaunchRecent({ repos, sources = null, onExit }) {
+  const recent = await getRecentQuiz(repos);
+  if (!recent) return showToast('No recent quiz to resume');
+  await launchDeckMode({ repos, sources, deck: recent.deck, mode: recent.mode, tcSecs: recent.tcSecs || 60, onExit });
 }
 
 // Drill a specific question set (deck weak spots, class weak spots, due
 // review). v1 used drill mode for all of these.
-export function startDrill({ repos, name, questions, records, onExit }) {
+export function startDrill({ repos, sources = null, name, questions, records, onExit }) {
   if (!questions.length) return showToast('Nothing to drill — nice! 🎉');
   const getRecord = getRecordFn(records);
   const ordered = interleaveQuestions([...questions], getRecord);
   launchQuizOverlay({
-    deckName: name, mode: 'drill', questions: ordered, records, repos, onExit,
+    deckName: name, mode: 'drill', questions: ordered, records, repos, sources, onExit,
   });
 }
 
 // The full launch modal for one deck (v1 openClassQuizPanel :152–189).
-export async function openQuizModal({ repos, deck, onExit }) {
+export async function openQuizModal({ repos, sources = null, deck, onExit }) {
   const { questions, records } = await loadDeckData(repos, deck.id);
   if (!questions.length) {
     return showToast('This deck has no questions yet — fill it in the Quiz Builder');
@@ -125,25 +166,7 @@ export async function openQuizModal({ repos, deck, onExit }) {
     const count = Math.min(Math.max(5, parseInt(countEl.value, 10) || defaultQ), maxQ);
     const tcSecs = parseInt(body.querySelector('#qm-secs').value, 10);
     close();
-    const getRecord2 = getRecordFn(records);
-
-    if (mode === 'exam') {
-      launchExamOverlay({ deckName: deck.name, questions, records, repos, count, onExit });
-    } else if (mode === 'timechallenge') {
-      // v1 :153–162: whole deck, due-first, NO interleave in TC.
-      const picked = weightedSample(questions, getRecord2, questions.length);
-      launchQuizOverlay({
-        deckName: deck.name, deckId: deck.id, mode: 'timechallenge',
-        questions: picked, records, repos, tcSecs, onExit,
-      });
-    } else {
-      const picked = interleaveQuestions(
-        weightedSample(questions, getRecord2, count), getRecord2);
-      launchQuizOverlay({
-        deckName: deck.name, deckId: deck.id, mode: 'standard',
-        questions: picked, records, repos, onExit,
-      });
-    }
+    void launchDeckMode({ repos, sources, deck, mode, count, tcSecs, onExit });
   };
 
   const drillBtn = body.querySelector('#qm-drill');
