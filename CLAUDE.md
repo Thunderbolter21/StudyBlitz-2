@@ -14,8 +14,14 @@ Read it to port behavior faithfully; never copy its architecture
 
 ## Current state
 
-- **Phase 5 (quiz engine) — complete; awaiting Matt's review.** Phase 4 is
-  verified live (real generation + phone sync confirmed by Matt).
+- **Phase 6 (polish & ship) — complete; awaiting Matt's review.** The app is
+  feature-complete. Phases 0–5 verified; Phase 4 confirmed live (real
+  generation + phone sync).
+- Migrations to run in Supabase, in order: `0001_init.sql`, then
+  `0002_preset_description.sql`.
+- PWA: `src/sw.js` + `src/sw-cache.js`. The deploy-swap (no stale bundle) is
+  proven by `scripts/e2e-pwa.mjs`. Never cache Supabase/Anthropic. If you add
+  routes that must work offline, remember navigations are network-first.
 - SM-2 parity is enforced by `src/engine/sm2.test.js` against a VERBATIM
   copy of v1's algorithm (`src/engine/testing/v1-oracle.js`) — 13 named
   cases + 400 fuzz sequences. Never edit the oracle.
@@ -198,7 +204,11 @@ server_updated_at > cursor`). See `supabase/migrations/0001_init.sql`.
    deep link. Memory "resets" overwrite with emptyRecord() — NEVER
    soft-delete a card_memory row (tombstones are terminal and would
    permanently block that question's memory).
-6. Polish & ship: backup, onboarding, a11y, perf, PWA, deploy checklist.
+6. ✅ Polish & ship: backup export/import (repos.backup), Settings page
+   (email/password/key/model/backup), resume-recent, per-question source
+   images, reference-aware storage GC, onboarding checklist, router error
+   boundary, a11y + perf (103.8 kB gz initial), PWA (deploy-safe SW),
+   README + deploy checklist.
 
 ## Gotchas
 
