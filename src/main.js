@@ -36,6 +36,11 @@ import { renderStyleGuidePage } from './pages/StyleGuidePage.js';
 
 const app = document.getElementById('app');
 
+// Non-fatal global error logging (v1 had this). Page-level render errors are
+// caught by the router's boundary; these just make stray errors visible.
+window.addEventListener('error', (e) => console.error('[StudyBlitz] error:', e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => console.error('[StudyBlitz] unhandled rejection:', e.reason));
+
 // Holds the pieces of the running app so sign-out can tear them down.
 let running = null;
 
@@ -163,4 +168,13 @@ async function boot() {
   }
 }
 
-void boot();
+boot().catch((err) => {
+  console.error('[StudyBlitz] boot failed:', err);
+  app.innerHTML = `
+    <main class="auth-wrap app-layer"><div class="auth-card paper-sheet">
+      <h1 class="wordmark">Study<span class="accent">Blitz</span></h1>
+      <p class="auth-error">StudyBlitz couldn't start. If you're in private-browsing
+      mode, local storage may be blocked — try a normal window.</p>
+      <button class="btn-primary" onclick="location.reload()">Reload</button>
+    </div></main>`;
+});

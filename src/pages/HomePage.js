@@ -84,6 +84,9 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
     if (token !== renderToken) return;
 
     const MODE_LABEL = { standard: 'Practice', exam: 'Exam', timechallenge: 'Time challenge' };
+    // First-run onboarding checklist shows until the account has its first
+    // deck with questions, then quietly disappears.
+    const hasQuestions = [...statsByDeck.values()].some((s) => s.count > 0);
 
     outlet.innerHTML = `
       <div class="tab-strip" id="sem-tabs">
@@ -93,7 +96,7 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
         ${archived.length ? `
           <button class="folder-tab${current.archivedAt ? ' active' : ''}" data-archived>
             Archived (${archived.length})</button>` : ''}
-        <button class="folder-tab" data-new-sem title="New semester">+</button>
+        <button class="folder-tab" data-new-sem title="New semester" aria-label="New semester">+</button>
       </div>
 
       <div class="paper-sheet" style="border-top-left-radius:0">
@@ -102,6 +105,19 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
             ${current.archivedAt ? '<span class="archived-badge">archived</span>' : ''}</h2>
           <button class="icon-btn" data-sem-menu aria-label="Semester options">⋯</button>
         </div>
+
+        ${!hasQuestions ? `
+          <div class="onboard-card sticky-note" style="max-width:none;transform:none;margin-bottom:var(--space-4)">
+            <h3 style="margin-top:0">🎓 Let's get you set up</h3>
+            <ol class="onboard-steps">
+              <li class="done">Create a semester</li>
+              <li class="${classes.length ? 'done' : 'current'}">Add a class${classes.length
+                ? '' : ` — <button class="btn-link" data-onboard-class style="padding:0">add one</button>`}</li>
+              <li class="${classes.length ? 'current' : ''}">Build your first deck${classes.length
+                ? ` — <button class="btn-link" data-onboard-build style="padding:0">open the Quiz Builder</button>` : ''}</li>
+            </ol>
+            <p class="auth-sub" style="margin:0">Drop your notes into the Quiz Builder and StudyBlitz turns them into a deck.</p>
+          </div>` : ''}
 
         ${recent ? `
           <div class="feedback-card" style="display:flex;align-items:center;
@@ -341,6 +357,12 @@ export function renderHomePage(outlet, { repos, sync, appStore, sources }) {
     if (resumeBtn) {
       resumeBtn.onclick = () => relaunchRecent({ repos, sources, onExit: () => void render() });
     }
+
+    outlet.querySelector('[data-onboard-build]')?.addEventListener('click', () => { location.hash = 'builder'; });
+    outlet.querySelector('[data-onboard-class]')?.addEventListener('click', async () => {
+      const result = await classFormModal({ title: 'New class', submitLabel: 'Create' });
+      if (result) await repos.classes.create({ semesterId: current.id, ...result });
+    });
 
     outlet.querySelector('#sem-tabs').onclick = async (e) => {
       const tab = e.target.closest('.folder-tab');

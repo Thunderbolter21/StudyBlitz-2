@@ -35,6 +35,9 @@ export function launchQuizOverlay({
 
   const overlay = document.createElement('div');
   overlay.className = 'quiz-overlay app-layer';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', `${deckName} quiz`);
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 

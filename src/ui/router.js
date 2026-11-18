@@ -8,8 +8,22 @@ export function startRouter({ routes, outlet, onNavigate }) {
   function apply() {
     const [route, queryString] = location.hash.slice(1).split('?');
     const handler = routes[route] ?? routes[''];
-    teardown?.();
-    teardown = handler(outlet, new URLSearchParams(queryString || '')) || null;
+    try { teardown?.(); } catch { /* tolerate a bad teardown */ }
+    try {
+      teardown = handler(outlet, new URLSearchParams(queryString || '')) || null;
+    } catch (err) {
+      // A page that throws must not blank the app — show a recoverable sheet.
+      console.error('[router] page error:', err);
+      teardown = null;
+      outlet.innerHTML = `
+        <div class="paper-sheet">
+          <div class="empty-state">
+            <h3>Something went wrong on this screen</h3>
+            <p class="hand">it's not your notes — it's us ✏️</p>
+            <button class="btn-primary" onclick="location.reload()">Reload</button>
+          </div>
+        </div>`;
+    }
     onNavigate?.(route || '');
   }
 
