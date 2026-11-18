@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="StudyBlitz">
+  <rect width="512" height="512" rx="104" fill="#faf6ef"/>
+  <!-- notebook margin line -->
+  <rect x="104" y="40" width="5" height="432" fill="#e5a9a4"/>
+  <!-- ruled lines -->
+  <g stroke="#cadbe8" stroke-width="3">
+    <line x1="109" y1="150" x2="452" y2="150"/>
+    <line x1="109" y1="230" x2="452" y2="230"/>
+    <line x1="109" y1="310" x2="452" y2="310"/>
+    <line x1="109" y1="390" x2="452" y2="390"/>
+  </g>
+  <text x="270" y="350" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-weight="700" font-size="300" fill="#202535">S<tspan fill="#b02a21">B</tspan></text>
+</svg>

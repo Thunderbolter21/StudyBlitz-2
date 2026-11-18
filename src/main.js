@@ -36,10 +36,34 @@ import { renderStyleGuidePage } from './pages/StyleGuidePage.js';
 
 const app = document.getElementById('app');
 
+// Build id (baked in by vite.config define) — exposed so deploys are
+// observable (the PWA swap test reads it).
+window.__SB2_BUILD__ = typeof __BUILD_ID__ === 'undefined' ? 'dev' : __BUILD_ID__;
+
 // Non-fatal global error logging (v1 had this). Page-level render errors are
 // caught by the router's boundary; these just make stray errors visible.
 window.addEventListener('error', (e) => console.error('[StudyBlitz] error:', e.error || e.message));
 window.addEventListener('unhandledrejection', (e) => console.error('[StudyBlitz] unhandled rejection:', e.reason));
+
+// ── PWA service worker ──────────────────────────────────────────────────────
+// Registered only in production builds. The v1 lesson: a stale SW once served
+// an old bundle after a deploy. sw.js uses skipWaiting + clients.claim + a
+// versioned precache that cleans up old versions; here we reload ONCE when a
+// new SW takes control — guarding the very first install so there's no loop.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return; // first install → don't reload
+    reloading = true;
+    window.location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => { setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000); })
+      .catch((err) => console.warn('[StudyBlitz] SW registration failed:', err));
+  });
+}
 
 // Holds the pieces of the running app so sign-out can tear them down.
 let running = null;
